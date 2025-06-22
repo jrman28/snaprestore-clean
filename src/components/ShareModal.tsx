@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -162,15 +161,15 @@ export function ShareModal({ open, onOpenChange, restoration }: ShareModalProps)
                   Email
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleSocialShare('whatsapp')}>
-                  <MessageCircle className="w-4 h-4 mr-2" />
+                  <img src="/whatsapp.png" alt="WhatsApp" className="w-4 h-4 mr-2 rounded-full" />
                   WhatsApp
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleSocialShare('twitter')}>
-                  <Share2 className="w-4 h-4 mr-2" />
+                  <img src="/twitter.png" alt="Twitter" className="w-4 h-4 mr-2 rounded-full" />
                   Twitter
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleSocialShare('facebook')}>
-                  <Share2 className="w-4 h-4 mr-2" />
+                  <img src="/facebook.png" alt="Facebook" className="w-4 h-4 mr-2 rounded-full" />
                   Facebook
                 </DropdownMenuItem>
               </DropdownMenuContent>
