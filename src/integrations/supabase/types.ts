@@ -53,15 +53,52 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          status: string
+          stripe_session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          status: string
+          stripe_session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          status?: string
+          stripe_session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photo_restorations: {
         Row: {
           completed_at: string | null
           created_at: string | null
+          credits_used: number | null
           file_size_bytes: number | null
           id: string
           original_filename: string
           original_image_url: string | null
           processing_time_seconds: number | null
+          replicate_job_id: string | null
           resolution: string | null
           restored_image_url: string | null
           status: string | null
@@ -70,11 +107,13 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string | null
+          credits_used?: number | null
           file_size_bytes?: number | null
           id?: string
           original_filename: string
           original_image_url?: string | null
           processing_time_seconds?: number | null
+          replicate_job_id?: string | null
           resolution?: string | null
           restored_image_url?: string | null
           status?: string | null
@@ -83,11 +122,13 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string | null
+          credits_used?: number | null
           file_size_bytes?: number | null
           id?: string
           original_filename?: string
           original_image_url?: string | null
           processing_time_seconds?: number | null
+          replicate_job_id?: string | null
           resolution?: string | null
           restored_image_url?: string | null
           status?: string | null
@@ -165,22 +206,22 @@ export type Database = {
       }
       user_credits: {
         Row: {
-          id: string
-          user_id: string
           credits: number
+          id: string
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
-          id?: string
-          user_id: string
           credits?: number
+          id?: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
-          id?: string
-          user_id?: string
           credits?: number
+          id?: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -189,7 +230,7 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          }
+          },
         ]
       },
     }

@@ -28,3 +28,6 @@ dist-ssr
 
 # Cursor/MCP configuration
 .cursor/mcp.json
+
+# Documentation and markdown files
+*.md

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Header } from '@/components/Header';
@@ -14,13 +14,27 @@ const Settings = () => {
   const [autoDownload, setAutoDownload] = useState(true);
   const [fileFormat, setFileFormat] = useState('jpg');
 
+  // Load saved settings on component mount
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem('snaprestore-settings');
+      if (savedSettings) {
+        const settings = JSON.parse(savedSettings);
+        setAutoDownload(settings.autoDownload ?? true);
+        setFileFormat(settings.fileFormat ?? 'jpg');
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  }, []);
+
   const handleSaveSettings = () => {
     // Save settings to localStorage
     const settings = {
       autoDownload,
       fileFormat
     };
-    localStorage.setItem('reminiscence-settings', JSON.stringify(settings));
+    localStorage.setItem('snaprestore-settings', JSON.stringify(settings));
     
     toast({
       title: "Settings saved",

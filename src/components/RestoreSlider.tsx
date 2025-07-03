@@ -98,7 +98,7 @@ export function RestoreSlider({ originalImage, restoredImage }: RestoreSliderPro
         <img
           src={originalImage}
           alt="Original image before restoration"
-          className="w-full h-96 object-cover"
+          className="w-full h-64 sm:h-72 object-contain bg-gray-50"
           loading="lazy"
         />
         
@@ -111,7 +111,7 @@ export function RestoreSlider({ originalImage, restoredImage }: RestoreSliderPro
           <img
             src={restoredImage}
             alt="Restored image after enhancement"
-            className="w-full h-96 object-cover"
+            className="w-full h-64 sm:h-72 object-contain bg-gray-50"
             loading="lazy"
           />
         </div>

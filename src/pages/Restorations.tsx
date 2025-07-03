@@ -12,65 +12,90 @@ import { ShareModal } from '@/components/ShareModal';
 import { Download, Share2, Image, Calendar, CheckCircle, Clock, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface Restoration {
   id: string;
   originalName: string;
-  restoredImageUrl: string;
-  completedAt: string;
-  status: 'completed' | 'processing';
+  restoredImageUrl: string | null;
+  completedAt: string | null;
+  status: 'completed' | 'processing' | 'failed';
+  original_image_url?: string | null;
+  created_at?: string | null;
 }
 
 const Restorations = () => {
   const { toast } = useToast();
-  const [restorations, setRestorations] = useState<Restoration[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedRestoration, setSelectedRestoration] = useState<Restoration | null>(null);
 
-  useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      // Load restorations from localStorage
-      const savedRestorations = localStorage.getItem('snaprestore-restorations');
-      if (savedRestorations) {
-        setRestorations(JSON.parse(savedRestorations));
-      } else {
-        // Add some sample data for demonstration
-        const sampleRestorations: Restoration[] = [{
-          id: 'RST-001',
-          originalName: 'family_photo_1950.jpg',
-          restoredImageUrl: '/placeholder.svg',
-          completedAt: new Date().toISOString(),
-          status: 'completed'
-        }, {
-          id: 'RST-002',
-          originalName: 'wedding_photo_1960.jpg',
-          restoredImageUrl: '/placeholder.svg',
-          completedAt: new Date(Date.now() - 86400000).toISOString(),
-          status: 'completed'
-        }, {
-          id: 'RST-003',
-          originalName: 'graduation_1975.jpg',
-          restoredImageUrl: '/placeholder.svg',
-          completedAt: new Date(Date.now() - 172800000).toISOString(),
-          status: 'processing'
-        }];
-        setRestorations(sampleRestorations);
-        localStorage.setItem('snaprestore-restorations', JSON.stringify(sampleRestorations));
+  // Fetch restorations from database
+  const { data: restorations = [], isLoading, error } = useQuery({
+    queryKey: ['restorations'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
       }
-      setIsLoading(false);
-    }, 800);
 
-    return () => clearTimeout(timer);
-  }, []);
+      const { data, error } = await supabase
+        .from('photo_restorations')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-  const handleDownload = (restoration: Restoration) => {
-    // Simulate download
-    toast({
-      title: "Download started",
-      description: `Downloading ${restoration.originalName}`
-    });
+      if (error) {
+        throw error;
+      }
+
+      // Transform data to match interface
+      return data.map(item => ({
+        id: item.id,
+        originalName: item.original_filename,
+        restoredImageUrl: item.restored_image_url,
+        completedAt: item.completed_at,
+        status: (item.status === 'succeeded' || item.status === 'completed') ? 'completed' : 
+                item.status === 'failed' ? 'failed' : 'processing',
+        original_image_url: item.original_image_url,
+        created_at: item.created_at
+      })) as Restoration[];
+    },
+  });
+
+  const handleDownload = async (restoration: Restoration) => {
+    if (!restoration.restoredImageUrl) {
+      toast({
+        title: "Download failed",
+        description: "No restored image available",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(restoration.restoredImageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `restored_${restoration.originalName}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Download started",
+        description: `Downloading ${restoration.originalName}`
+      });
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Failed to download the restored image",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleShare = (restoration: Restoration) => {
@@ -80,22 +105,16 @@ const Restorations = () => {
 
   const handleDelete = async (restoration: Restoration) => {
     if (!window.confirm(`Are you sure you want to delete ${restoration.originalName}? This cannot be undone.`)) return;
-    // If using Supabase, delete from backend
-    if (restoration.id.startsWith('RST-')) {
-      // Demo/sample data, just remove from state
-      setRestorations(restorations.filter(r => r.id !== restoration.id));
-      localStorage.setItem('snaprestore-restorations', JSON.stringify(restorations.filter(r => r.id !== restoration.id)));
-      toast({ title: 'Deleted', description: `${restoration.originalName} deleted.` });
-      return;
-    }
+    
     const { error } = await supabase
       .from('photo_restorations')
       .delete()
       .eq('id', restoration.id);
+      
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      setRestorations(restorations.filter(r => r.id !== restoration.id));
+      queryClient.invalidateQueries(['restorations']);
       toast({ title: 'Deleted', description: `${restoration.originalName} deleted.` });
     }
   };
@@ -111,6 +130,11 @@ const Restorations = () => {
         return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
             <Clock className="w-3 h-3 mr-1" />
             Processing
+          </Badge>;
+      case 'failed':
+        return <Badge className="bg-red-100 text-red-800 border-red-200">
+            <Trash2 className="w-3 h-3 mr-1" />
+            Failed
           </Badge>;
       default:
         return <Badge variant="secondary">Unknown</Badge>;
@@ -140,7 +164,11 @@ const Restorations = () => {
             <Card key={restoration.id} className="shadow-soft-lg">
               <CardContent className="flex items-center space-x-4 py-4">
                 <div className="w-16 h-16 bg-gray-100 rounded border overflow-hidden shadow-soft">
-                  <img src={restoration.restoredImageUrl} alt={restoration.originalName} className="w-full h-full object-cover" />
+                  <img 
+                    src={restoration.restoredImageUrl || restoration.original_image_url || '/placeholder.svg'} 
+                    alt={restoration.originalName} 
+                    className="w-full h-full object-cover" 
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2 mb-1">
@@ -150,7 +178,7 @@ const Restorations = () => {
                   <div className="font-medium truncate text-sm">{restoration.originalName}</div>
                   <div className="flex items-center space-x-2 text-xs text-gray-600 mt-1">
                     <Calendar className="w-4 h-4" />
-                    <span>{new Date(restoration.completedAt).toLocaleDateString()}</span>
+                    <span>{restoration.completedAt ? new Date(restoration.completedAt).toLocaleDateString() : new Date(restoration.created_at as string).toLocaleDateString()}</span>
                   </div>
                 </div>
                 <div className="flex flex-col space-y-2">
@@ -252,7 +280,11 @@ const Restorations = () => {
                         <TableCell>
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-gray-100 rounded border overflow-hidden shadow-soft">
-                              <img src={restoration.restoredImageUrl} alt={restoration.originalName} className="w-full h-full object-cover" />
+                              <img 
+                                src={restoration.restoredImageUrl || restoration.original_image_url || '/placeholder.svg'} 
+                                alt={restoration.originalName} 
+                                className="w-full h-full object-cover" 
+                              />
                             </div>
                             <span className="font-medium truncate max-w-xs">
                               {restoration.originalName}
@@ -262,7 +294,7 @@ const Restorations = () => {
                         <TableCell>
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <Calendar className="w-4 h-4" />
-                            <span>{new Date(restoration.completedAt).toLocaleDateString()}</span>
+                            <span>{restoration.completedAt ? new Date(restoration.completedAt).toLocaleDateString() : new Date(restoration.created_at as string).toLocaleDateString()}</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-right">

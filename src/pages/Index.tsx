@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import BeforeAfterSlider from '@/components/BeforeAfterSlider';
 import AuthModal from '@/components/AuthModal';
@@ -14,6 +16,38 @@ import { tutorialSteps } from '@/config/tutorialSteps';
 const Index = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showTutorial, setShowTutorial] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+
+  // Auto-redirect authenticated users to dashboard
+  useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // User is authenticated, redirect to dashboard
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthAndRedirect();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        // User just signed in, redirect to dashboard
+        navigate('/dashboard', { replace: true });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleGetStartedClick = () => {
     setIsModalOpen(true);
@@ -22,6 +56,15 @@ const Index = () => {
   const handleTutorialComplete = () => {
     setShowTutorial(false);
   };
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div 

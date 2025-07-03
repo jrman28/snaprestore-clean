@@ -93,7 +93,7 @@ export function PhotoUpload({ onImageSelect, selectedFile, imagePreview }: Photo
           <img
             src={imagePreview}
             alt="Selected photo"
-            className="w-full h-64 sm:h-80 lg:h-96 object-cover rounded-lg"
+            className="w-full max-h-64 sm:max-h-80 lg:max-h-96 object-contain rounded-lg bg-gray-50"
             loading="lazy"
             onError={() => setError('Failed to load image')}
           />
